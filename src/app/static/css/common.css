@@ -1,0 +1,88 @@
+.insideDivPadding {
+    padding: 0.5em;
+}
+
+.square-box {
+   border: solid 0.5px;
+   width: 200px;
+   height: 200px;
+}
+
+.square-content {
+    display: table-cell;
+    text-align: center;
+    vertical-align: middle;
+    width: 200px;
+    height: 200px;
+}
+
+.flex-2-cols {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Calibri', sans-serif;
+}
+
+label {
+    font-weight: bold;
+}
+
+.btn {
+    font-weight: bold;
+}
+
+.btn-hover:hover {
+    background-color: #d6d3ce;
+}
+
+.btn-hover-active {
+    background-color: #d6d3ce;
+}
+
+.table_header:hover {
+    background-color: darkgrey;
+    cursor: pointer;
+}
+
+.loading {
+    display:    block;
+    position:   fixed;
+    z-index:    1000;
+    top:        0;
+    left:       0;
+    height:     100%;
+    width:      100%;
+    background: rgba( 255, 255, 255, .8 ) 
+                url('http://i.stack.imgur.com/FhHRx.gif') 
+                50% 50% 
+                no-repeat;
+}
+
+.minimized_loading {
+    display:    block;
+    position:   fixed;
+    z-index:    1000;
+    top:        0;
+    left:       unset;
+    right:      0;
+    height:     10%;
+    width:      10%;
+    background: rgba( 255, 255, 255, .8 ) 
+                url('http://i.stack.imgur.com/FhHRx.gif') 
+                50% 50% 
+                no-repeat;
+}
+
+.cross_button_for_loading {
+    position: relative;
+    float: right;
+}
+
+.minimize_button_for_loading {
+    position: relative;
+    float: right;
+}

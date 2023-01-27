@@ -1,0 +1,12 @@
+Django==3.2.10
+django-cors-headers==3.13.0
+django-filter==22.1
+djangorestframework==3.13.1
+djangorestframework-simplejwt==5.2.0
+python-dotenv==0.20.0
+dj-database-url==1.0.0
+psycopg2-binary==2.9.3
+requests==2.28.1
+numpy==1.23.1
+schedule==1.1.0
+

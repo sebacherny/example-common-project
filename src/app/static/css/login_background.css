@@ -1,0 +1,10 @@
+body {
+    min-height: 100vh;
+    background-image: linear-gradient(to right bottom, #fbb142, #e48f4a, #c5714e, #a0594d, #774546, #724b4b, #6d5050,
+     #675555, #857572, #a49691, #c3b9b2, #e3ddd6);
+}
+
+#register_btn, #login_btn {
+    background: #402E32;
+    color: #FBB142;
+}
