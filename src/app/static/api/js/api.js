@@ -1,4 +1,12 @@
+const login_sports_api = async (username, password, success, fail) => {
+  return common_login_api(true, username, password, success, fail);
+}
+
 const login_api = async (username, password, success, fail) => {
+  return common_login_api(false, username, password, success, fail);
+}
+
+const common_login_api = async (is_sports, username, password, success, fail) => {
   const response = await fetch(
     `/api/token/`,
     {
@@ -10,6 +18,7 @@ const login_api = async (username, password, success, fail) => {
       body: JSON.stringify({
         "username": username,
         "password": password,
+        "is_sports": is_sports,
       })
     }
   );
@@ -44,9 +53,18 @@ const setLocalStorageLanguage = async (lang) => {
   await localStorage.setItem("pageLanguage", lang);
 }
 
+
+const register_sports_api = async (userInfo, success, fail) => {
+  return common_register_api(`/api/sports/register/`, userInfo, success, fail);
+};
+
 const register_api = async (userInfo, success, fail) => {
+  return common_register_api(`/api/register/`, userInfo, success, fail)
+};
+
+const common_register_api = async (url, userInfo, success, fail) => {
   const response = await fetch(
-    `/api/register/`,
+    url,
     {
       method: 'POST',
       headers: {
@@ -66,27 +84,90 @@ const register_api = async (userInfo, success, fail) => {
   }
 };
 
-const validate_user_api = async (userInfo, success, fail) => {
+const validate_user_api = async (username, company_role, success, fail) => {
+  const token = await localStorage.getItem("userToken");
+  if (token === null) {
+    console.log("No credentials found, redirecting...");
+    window.location = "/login";
+    return [];
+  }
   const response = await fetch(
     `/api/validate/`,
     {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
+        'Content-Type': 'Application/JSON',
+        'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(userInfo)
+      body: JSON.stringify({ username, company_role })
     }
   );
   const text = await response.text();
   if (response.status === 200) {
     console.log("success", JSON.parse(text));
-    success(JSON.parse(text));
+    success(JSON.parse(text)['data']);
   } else {
     console.log("failed", text);
     fail(JSON.parse(text)["detail"])
   }
 };
+
+const approve_pending_rows_ticket_api = async (ticketId, success, fail) => {
+  const token = await localStorage.getItem("userToken");
+  if (token === null) {
+    console.log("No credentials found, redirecting...");
+    window.location = "/login";
+    return [];
+  }
+  const response = await fetch(
+    `/api/ticket/${ticketId}/approve-rows/`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'Application/JSON',
+        'Authorization': `Bearer ${token}`,
+      },
+    }
+  );
+  const text = await response.text();
+  if (response.status === 200) {
+    console.log("success", JSON.parse(text));
+    success(JSON.parse(text)['data']);
+  } else {
+    console.log("failed", text);
+    fail(JSON.parse(text)["detail"])
+  }
+};
+
+
+const approve_one_pending_row_ticket_api = async (ticketId, rowId, success, fail) => {
+  const token = await localStorage.getItem("userToken");
+  if (token === null) {
+    console.log("No credentials found, redirecting...");
+    window.location = "/login";
+    return [];
+  }
+  const response = await fetch(
+    `/api/tickets/${ticketId}/rows/${rowId}/`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'Application/JSON',
+        'Authorization': `Bearer ${token}`,
+      },
+    }
+  );
+  const text = await response.text();
+  if (response.status === 200) {
+    console.log("success", JSON.parse(text));
+    success(JSON.parse(text)['data']);
+  } else {
+    console.log("failed", text);
+    fail(JSON.parse(text)["detail"])
+  }
+};
+
+
 
 const resend_email_api = async (email, success) => {
   const response = await fetch(
@@ -111,8 +192,7 @@ const resend_email_api = async (email, success) => {
 };
 
 
-
-const ask_question_api = async (message, success, fail) => {
+const do_process_csv_file_content = async (json_content, success, fail) => {
   const token = await localStorage.getItem("userToken");
   if (token === null) {
     console.log("No credentials found, redirecting...");
@@ -120,14 +200,14 @@ const ask_question_api = async (message, success, fail) => {
     return [];
   }
   const response = await fetch(
-    `/api/ask_question/`,
+    `/api/store_sheet_rows/`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'Application/JSON',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ message })
+      body: JSON.stringify(json_content)
     }
   );
   const text = await response.text();
@@ -135,7 +215,7 @@ const ask_question_api = async (message, success, fail) => {
     do_token_not_valid();
     return [];
   }
-  if (response.status === 200) {
+  if (response.status === 201) {
     console.log("success", JSON.parse(text));
     success(JSON.parse(text));
   } else {
@@ -144,7 +224,8 @@ const ask_question_api = async (message, success, fail) => {
   }
 };
 
-const do_create_rate_object_api = async (rate_object, success, fail, is_new) => {
+
+const add_rows_to_spreadsheet_api = async (spreadsheetId, data_json, success, fail) => {
   const token = await localStorage.getItem("userToken");
   if (token === null) {
     console.log("No credentials found, redirecting...");
@@ -152,388 +233,14 @@ const do_create_rate_object_api = async (rate_object, success, fail, is_new) => 
     return [];
   }
   const response = await fetch(
-    `/api/money_rates/`,
-    {
-      method: is_new ? 'POST' : 'PUT',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(rate_object)
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 201 || response.status === 200) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text));
-  } else {
-    console.log("failed", text);
-    fail(JSON.parse(text)["errors"]);
-  }
-}
-
-const get_all_users_admin_api = async (period, success) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/admin/dashboard/?period=${period}`,
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      }
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 200) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text));
-  } else {
-    console.log("failed", text);
-  }
-};
-
-const get_clients_info_admin_api = async (success) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/admin/clients-info/`,
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      }
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 200) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text));
-  } else {
-    console.log("failed", text);
-  }
-};
-
-const get_database_info_admin_api = async (success) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/admin/database-info/`,
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      }
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 200) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text));
-  } else {
-    console.log("failed", text);
-  }
-};
-
-const do_solar_edge_api_call = async (success) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/admin/solar-edge/`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      }
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 200) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text));
-  } else {
-    console.log("failed", text);
-  }
-};
-
-const do_enphase_api_call = async (success) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/admin/enphase/`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      }
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 200) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text));
-  } else {
-    console.log("failed", text);
-  }
-};
-
-const create_system_from_wizard_api = async (data, success, fail) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/systems/wizard/`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(data)
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 201) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text)["data"]);
-  } else {
-    console.log("failed", text);
-    fail(JSON.parse(text)['errors']);
-  }
-};
-
-
-const post_system_api = async (data, success) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/systems/`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(data)
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 201) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text)["data"]);
-  } else {
-    console.log("failed", text);
-  }
-};
-
-const put_system_api = async (systemId, data, success) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/systems/${systemId}/`,
+    `/api/datasets/${spreadsheetId}/`,
     {
       method: 'PUT',
       headers: {
         'Content-Type': 'Application/JSON',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(data)
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 200) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text));
-  } else {
-    console.log("failed", text);
-  }
-};
-
-
-const post_solar_array_api = async (systemId, data, success, fail) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/systems/${systemId}/solar_array/`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(data)
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 201) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text)["data"]);
-  } else {
-    console.log("failed", text);
-    fail(JSON.parse(text));
-  }
-};
-
-const put_solar_array_api = async (systemId, arrayId, data, success, fail) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/systems/${systemId}/solar_array/${arrayId}/`,
-    {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(data)
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 200) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text)["data"]);
-  } else {
-    console.log("failed", text);
-    fail(JSON.parse(text));
-  }
-};
-
-const post_inverter_api = async (systemId, data, success, fail) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/systems/${systemId}/inverter/`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(data)
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 201) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text)["data"]);
-  } else {
-    console.log("failed", text);
-    fail(JSON.parse(text));
-  }
-};
-
-const put_inverter_api = async (systemId, inverterId, data, success, fail) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/systems/${systemId}/inverter/${inverterId}/`,
-    {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(data)
+      body: JSON.stringify(data_json)
     }
   );
   const text = await response.text();
@@ -551,7 +258,8 @@ const put_inverter_api = async (systemId, inverterId, data, success, fail) => {
 };
 
 
-const get_dashboard_info_api = async (systemId, date_str, period, success) => {
+
+const get_all_datasets_api = async (success) => {
   const token = await localStorage.getItem("userToken");
   if (token === null) {
     console.log("No credentials found, redirecting...");
@@ -559,195 +267,7 @@ const get_dashboard_info_api = async (systemId, date_str, period, success) => {
     return [];
   }
   const response = await fetch(
-    `/api/systems/${systemId}/dashboard_info/?date_str=${date_str}&period=${period}`,
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      },
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 200) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text));
-  } else {
-    console.log("failed", text);
-  }
-};
-
-const get_solar_edge_client_api = async (systemAddress, success, fail) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/solar_edge/`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ address: systemAddress })
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 200) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text));
-  } else {
-    console.log("failed", text);
-    fail(JSON.parse(text));
-  }
-};
-
-const get_enphase_client_api = async (systemAddress, success, fail) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/enphase/`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ address: systemAddress })
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 200) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text));
-  } else {
-    console.log("failed", text);
-    fail(JSON.parse(text));
-  }
-};
-
-const get_solar_edge_client_inventory_api = async (siteID, success, fail) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/solar_edge/inventory/${siteID}/`,
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      },
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 200) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text));
-  } else {
-    console.log("failed", text);
-    fail(JSON.parse(text));
-  }
-};
-
-const get_enphase_client_inventory_api = async (siteID, success, fail) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/enphase/inventory/${siteID}/`,
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      },
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 200) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text));
-  } else {
-    console.log("failed", text);
-    fail(JSON.parse(text));
-  }
-};
-
-
-
-const get_solar_array_data = async (systemId, solarArrayId, success) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/systems/${systemId}/solar_array/${solarArrayId}/`,
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      },
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  if (response.status === 200) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text)["data"]);
-  } else {
-    console.log("failed", text);
-  }
-};
-
-const get_solar_arrays_api = async (systemId, success) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/systems/${systemId}/solar_array`,
+    `/api/datasets/`,
     {
       method: 'GET',
       headers: {
@@ -769,7 +289,7 @@ const get_solar_arrays_api = async (systemId, success) => {
   }
 };
 
-const get_inverters_api = async (systemId, success) => {
+const get_data_from_linkedin_api = async (success) => {
   const token = await localStorage.getItem("userToken");
   if (token === null) {
     console.log("No credentials found, redirecting...");
@@ -777,7 +297,37 @@ const get_inverters_api = async (systemId, success) => {
     return [];
   }
   const response = await fetch(
-    `/api/systems/${systemId}/inverter`,
+    `/api/linkedin_scrapper/`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'Application/JSON',
+        'Authorization': `Bearer ${token}`,
+      }
+    }
+  );
+  const text = await response.text();
+  if (response.status === 401) {
+    do_token_not_valid();
+    return [];
+  }
+  if (response.status === 200) {
+    console.log("success", JSON.parse(text));
+    success(JSON.parse(text));
+  } else {
+    console.log("failed", text);
+  }
+};
+
+const get_one_ticket_api = async (ticket_id, success) => {
+  const token = await localStorage.getItem("userToken");
+  if (token === null) {
+    console.log("No credentials found, redirecting...");
+    window.location = "/login";
+    return [];
+  }
+  const response = await fetch(
+    `/api/tickets/${ticket_id}/`,
     {
       method: 'GET',
       headers: {
@@ -800,7 +350,7 @@ const get_inverters_api = async (systemId, success) => {
 };
 
 
-const get_all_systems_api = async (success) => {
+const get_all_tickets_api = async (success) => {
   const token = await localStorage.getItem("userToken");
   if (token === null) {
     console.log("No credentials found, redirecting...");
@@ -808,7 +358,7 @@ const get_all_systems_api = async (success) => {
     return [];
   }
   const response = await fetch(
-    `/api/systems/`,
+    `/api/tickets/`,
     {
       method: 'GET',
       headers: {
@@ -830,7 +380,8 @@ const get_all_systems_api = async (success) => {
   }
 };
 
-const get_all_rates_api = async (success) => {
+
+const get_form_data_api = async (success) => {
   const token = await localStorage.getItem("userToken");
   if (token === null) {
     console.log("No credentials found, redirecting...");
@@ -838,7 +389,7 @@ const get_all_rates_api = async (success) => {
     return [];
   }
   const response = await fetch(
-    `/api/money_rates/`,
+    `/api/form_data/`,
     {
       method: 'GET',
       headers: {
@@ -854,14 +405,13 @@ const get_all_rates_api = async (success) => {
   }
   if (response.status === 200) {
     console.log("success", JSON.parse(text));
-    success(JSON.parse(text)["data"]);
+    success(JSON.parse(text));
   } else {
     console.log("failed", text);
   }
 };
 
-
-const get_system_info_api = async (systemId, success) => {
+const get_spreadsheet_dashboard_api = async (spreadsheetId, success) => {
   const token = await localStorage.getItem("userToken");
   if (token === null) {
     console.log("No credentials found, redirecting...");
@@ -869,7 +419,7 @@ const get_system_info_api = async (systemId, success) => {
     return [];
   }
   const response = await fetch(
-    `/api/systems/${systemId}/`,
+    `/api/datasets/${spreadsheetId}/`,
     {
       method: 'GET',
       headers: {
@@ -886,6 +436,97 @@ const get_system_info_api = async (systemId, success) => {
   if (response.status === 200) {
     console.log("success", JSON.parse(text));
     success(JSON.parse(text));
+  } else {
+    console.log("failed", text);
+  }
+};
+
+const do_get_custom_graph_api = async (spreadsheetId, graphData, success) => {
+  const token = await localStorage.getItem("userToken");
+  if (token === null) {
+    console.log("No credentials found, redirecting...");
+    window.location = "/login";
+    return [];
+  }
+  const response = await fetch(
+    `/api/datasets/${spreadsheetId}/custom-graph/?` + new URLSearchParams(graphData),
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'Application/JSON',
+        'Authorization': `Bearer ${token}`,
+      },
+    }
+  );
+  const text = await response.text();
+  if (response.status === 401) {
+    do_token_not_valid();
+    return [];
+  }
+  if (response.status === 200) {
+    console.log("success", JSON.parse(text));
+    success(JSON.parse(text));
+  } else {
+    console.log("failed", text);
+  }
+};
+
+
+const get_spreadsheet_table_api = async (spreadsheetId, page, success) => {
+  const token = await localStorage.getItem("userToken");
+  if (token === null) {
+    console.log("No credentials found, redirecting...");
+    window.location = "/login";
+    return [];
+  }
+  const response = await fetch(
+    `/api/datasets/${spreadsheetId}/view-table?page_no=${page}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'Application/JSON',
+        'Authorization': `Bearer ${token}`,
+      },
+    }
+  );
+  const text = await response.text();
+  if (response.status === 401) {
+    do_token_not_valid();
+    return [];
+  }
+  if (response.status === 200) {
+    console.log("success", JSON.parse(text));
+    success(JSON.parse(text));
+  } else {
+    console.log("failed", text);
+  }
+};
+
+const get_dataset_rows_as_list_api = async (spreadsheetId, success) => {
+  const token = await localStorage.getItem("userToken");
+  if (token === null) {
+    console.log("No credentials found, redirecting...");
+    window.location = "/login";
+    return [];
+  }
+  const response = await fetch(
+    `/api/datasets/${spreadsheetId}/rows-as-list`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'Application/JSON',
+        'Authorization': `Bearer ${token}`,
+      },
+    }
+  );
+  const text = await response.text();
+  if (response.status === 401) {
+    do_token_not_valid();
+    return [];
+  }
+  if (response.status === 200) {
+    console.log("success", JSON.parse(text));
+    success(JSON.parse(text)['data']);
   } else {
     console.log("failed", text);
   }
@@ -921,7 +562,7 @@ const get_user_data_api = async (success) => {
   }
 };
 
-const delete_solar_array_api = async (systemId, arrayId, success) => {
+const delete_dataset_api = async (spreadsheetId, success) => {
   const token = await localStorage.getItem("userToken");
   if (token === null) {
     console.log("No credentials found, redirecting...");
@@ -929,7 +570,7 @@ const delete_solar_array_api = async (systemId, arrayId, success) => {
     return [];
   }
   const response = await fetch(
-    `/api/systems/${systemId}/solar_array/${arrayId}/`,
+    `/api/datasets/${spreadsheetId}/`,
     {
       method: 'DELETE',
       headers: {
@@ -955,7 +596,7 @@ const delete_solar_array_api = async (systemId, arrayId, success) => {
   }
 };
 
-const delete_inverter_api = async (systemId, inverterId, success) => {
+const delete_ticket_api = async (ticketId, success) => {
   const token = await localStorage.getItem("userToken");
   if (token === null) {
     console.log("No credentials found, redirecting...");
@@ -963,42 +604,7 @@ const delete_inverter_api = async (systemId, inverterId, success) => {
     return [];
   }
   const response = await fetch(
-    `/api/systems/${systemId}/inverter/${inverterId}/`,
-    {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'Application/JSON',
-        'Authorization': `Bearer ${token}`,
-      }
-    }
-  );
-  const text = await response.text();
-  if (response.status === 401) {
-    do_token_not_valid();
-    return [];
-  }
-  console.log(response.status);
-  if (response.status === 410) {
-    console.log("success", JSON.parse(text));
-    success(JSON.parse(text));
-  } else {
-    console.log("failed", text);
-    Object.entries(JSON.parse(text)).forEach(([key, value]) => {
-      fail(`${key}: ${value}`);
-    });
-  }
-};
-
-
-const delete_system_api = async (systemId, success) => {
-  const token = await localStorage.getItem("userToken");
-  if (token === null) {
-    console.log("No credentials found, redirecting...");
-    window.location = "/login";
-    return [];
-  }
-  const response = await fetch(
-    `/api/systems/${systemId}/`,
+    `/api/tickets/${ticketId}/`,
     {
       method: 'DELETE',
       headers: {
@@ -1025,10 +631,234 @@ const delete_system_api = async (systemId, success) => {
 };
 
 
-function doIfEscapePressed(event, funcCall) {
-  event = event || window.event;
-  var key = event.which || event.key || event.keyCode;
-  if (key === 27) { // escape
-    funcCall();
+const delete_pending_row_api = async (ticketId, rowId, success) => {
+  const token = await localStorage.getItem("userToken");
+  if (token === null) {
+    console.log("No credentials found, redirecting...");
+    window.location = "/login";
+    return [];
+  }
+  const response = await fetch(
+    `/api/tickets/${ticketId}/rows/${rowId}/`,
+    {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'Application/JSON',
+        'Authorization': `Bearer ${token}`,
+      }
+    }
+  );
+  const text = await response.text();
+  if (response.status === 401) {
+    do_token_not_valid();
+    return [];
+  }
+  console.log(response.status);
+  if (response.status === 410) {
+    console.log("success", JSON.parse(text));
+    success(JSON.parse(text));
+  } else {
+    console.log("failed", text);
+    Object.entries(JSON.parse(text)).forEach(([key, value]) => {
+      fail(`${key}: ${value}`);
+    });
+  }
+};
+
+const ask_question_api = async (message, datasetId, success, fail) => {
+  const token = await localStorage.getItem("userToken");
+  if (token === null) {
+    console.log("No credentials found, redirecting...");
+    window.location = "/login";
+    return [];
+  }
+  const response = await fetch(
+    `/api/ask_question/`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'Application/JSON',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ message, datasetId })
+    }
+  );
+  const text = await response.text();
+  if (response.status === 401) {
+    do_token_not_valid();
+    return [];
+  }
+  if (response.status === 200) {
+    console.log("success", JSON.parse(text));
+    success(JSON.parse(text));
+  } else {
+    console.log("failed", text);
+    fail(JSON.parse(text));
+  }
+};
+
+const store_rows_from_form_api = async (inputInfo, success, fail) => {
+  const token = await localStorage.getItem("userToken");
+  if (token === null) {
+    console.log("No credentials found, redirecting...");
+    window.location = "/login";
+    return [];
+  }
+  const response = await fetch(
+    `/api/form/`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'Application/JSON',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(inputInfo)
+    }
+  );
+  const text = await response.text();
+  if (response.status === 401) {
+    do_token_not_valid();
+    return [];
+  }
+  if (response.status === 200) {
+    console.log("success", JSON.parse(text));
+    success(JSON.parse(text));
+  } else {
+    console.log("failed", text);
+    fail(JSON.parse(text));
+  }
+};
+
+const create_sports_students_dataset_api = async (jsonData, success, fail) => {
+  const token = await localStorage.getItem("userToken");
+  if (token === null) {
+    console.log("No credentials found, redirecting...");
+    window.location = "/login";
+    return [];
+  }
+  const response = await fetch(
+    `/api/students-dataset/`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'Application/JSON',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ jsonData })
+    }
+  );
+  const text = await response.text();
+  if (response.status === 401) {
+    do_token_not_valid();
+    return [];
+  }
+  if (response.status === 200) {
+    console.log("success", JSON.parse(text));
+    success(JSON.parse(text));
+  } else {
+    console.log("failed", text);
+    fail(JSON.parse(text));
+  }
+};
+
+const get_sports_students_dataset_api = async (success, fail) => {
+  const token = await localStorage.getItem("userToken");
+  if (token === null) {
+    console.log("No credentials found, redirecting...");
+    window.location = "/login";
+    return [];
+  }
+  const response = await fetch(
+    `/api/students-dataset/`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'Application/JSON',
+        'Authorization': `Bearer ${token}`,
+      },
+    }
+  );
+  const text = await response.text();
+  if (response.status === 401) {
+    do_token_not_valid();
+    return [];
+  }
+  if (response.status === 200) {
+    console.log("success", JSON.parse(text));
+    success(JSON.parse(text));
+  } else {
+    console.log("failed", text);
+    fail(JSON.parse(text));
+  }
+};
+
+
+
+// SHARING
+
+const share_spreadsheet_api = async (email, spreadsheetId, success, fail) => {
+  const token = await localStorage.getItem("userToken");
+  if (token === null) {
+    console.log("No credentials found, redirecting...");
+    window.location = "/login";
+    return [];
+  }
+  const response = await fetch(
+    `/api/datasets/${spreadsheetId}/share/`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'Application/JSON',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        "email": email,
+      })
+    }
+  );
+  const text = await response.text();
+  if (response.status === 401) {
+    do_token_not_valid();
+    return [];
+  }
+  if (response.status === 200) {
+    console.log("success", JSON.parse(text));
+    success(JSON.parse(text)['data']);
+  } else {
+    console.log("failed", text);
+    fail(JSON.parse(text)['detail']);
+  }
+};
+
+const unshare_spreadsheet_api = async (userId, spreadsheetId, success) => {
+  const token = await localStorage.getItem("userToken");
+  if (token === null) {
+    console.log("No credentials found, redirecting...");
+    window.location = "/login";
+    return [];
+  }
+  const response = await fetch(
+    `/api/datasets/${spreadsheetId}/user/${userId}/unshare/`,
+    {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'Application/JSON',
+        'Authorization': `Bearer ${token}`,
+      }
+    }
+  );
+  const text = await response.text();
+  if (response.status === 401) {
+    do_token_not_valid();
+    return [];
+  }
+  if (response.status === 200) {
+    console.log("success", JSON.parse(text));
+    success(JSON.parse(text));
+  } else {
+    console.log("failed", text);
+    Object.entries(JSON.parse(text)).forEach(([key, value]) => {
+      fail(`${key}: ${value}`);
+    });
   }
 };

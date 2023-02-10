@@ -1,208 +1,195 @@
+from datetime import datetime
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-
+import datetime
 from django.contrib import admin
+from django_files.settings import MASTER_CSR_DATASET_NAME, ROWS_PENDING_VALIDATION_DATASET_NAME
 
 
 class CustomUser(AbstractUser):
-    role = models.CharField(max_length=100)
-    payment_type = models.CharField(max_length=100)
-    account_balance = models.CharField(max_length=100)
     address = models.CharField(max_length=100)
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
     zip = models.CharField(max_length=100)
+    company = models.CharField(max_length=100)
     registration_random_code = models.CharField(max_length=100)
+    company_role = models.CharField(max_length=100)
+    is_sports = models.BooleanField(default=False)
 
     def __str__(self):
-        return "{}{}".format(self.username, " ({} {})".format(self.first_name, self.last_name) if self.first_name or self.last_name else "")
+        return "{} - {} {}".format(self.username, self.first_name, self.last_name)
 
     class Meta(AbstractUser.Meta):
         swappable = 'AUTH_USER_MODEL'
         ordering = ["id"]
 
 
-class UtilityRate(models.Model):
-    utility_name = models.CharField(max_length=100, blank=False)
-    rate_name = models.CharField(max_length=100, blank=False)
-    rate_structure = models.JSONField(null=True)
-
-    def __str__(self):
-        return "{} - {}".format(
-            self.utility_name, self.rate_name
-        )
-
-    class Meta:
-        ordering = ["id"]
-
-
-class SolarSystem(models.Model):
+class Spreadsheet(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    date_added = models.DateField(auto_now_add=True)
     name = models.CharField(max_length=100, blank=True)
-    location_address = models.CharField(max_length=100, blank=True)
-    location_longitude = models.FloatField(blank=True, null=True)
-    location_latitude = models.FloatField(blank=True, null=True)
-    location_city = models.FloatField(blank=True, null=True)
-    location_state = models.FloatField(blank=True, null=True)
-    location_zip = models.FloatField(blank=True, null=True)
-    monitor_id = models.CharField(max_length=100, blank=True)
-    total_capacity = models.IntegerField(default=0)
-    inverters_count = models.IntegerField(default=0)
-    arrays_count = models.IntegerField(default=0)
-    money_rate_object = models.ForeignKey(
-        UtilityRate, on_delete=models.RESTRICT, null=True, default=None)
-    api_name = models.CharField(max_length=100, blank=False)
+    date_added = models.DateField()
+    last_updated = models.DateField()
 
     def __str__(self):
-        return "System {} (monitor {})".format(self.id, self.monitor_id)
+        return "Spreadsheet {}".format(self.name)
 
     class Meta:
         ordering = ["id"]
 
 
-class Inverter(models.Model):
+class TicketParent(models.Model):
+
+    date_created = models.DateField()
+
+
+class Ticket(models.Model):
+
+    user_created = models.ForeignKey(
+        CustomUser, on_delete=models.SET_NULL, null=True, related_name='ticker_user_created')
+    user_assigned = models.ForeignKey(
+        CustomUser, on_delete=models.SET_NULL, null=True, related_name='ticker_user_assigned')
+    spreadsheet = models.ForeignKey(
+        Spreadsheet, on_delete=models.CASCADE, null=True)
+    message = models.CharField(max_length=1000, blank=True)
+    date_created = models.DateField()
+    ticket_type = models.CharField(max_length=30)
+    ticket_parent = models.ForeignKey(TicketParent, on_delete=models.CASCADE,
+                                      default=None, null=True)
+    rows_count = models.IntegerField(default=0)
+    is_pending = models.BooleanField(default=True)
+
+
+class SpreadsheetRow(models.Model):
+    index_in_sheet = models.IntegerField()
+    company_ticker = models.CharField(max_length=100, blank=True)
+    year = models.IntegerField()
+    company = models.CharField(max_length=100, blank=True)
+    cofileinitals = models.CharField(max_length=100, blank=True)
+    ESG_spending_numerical_category = models.IntegerField()
+    csr_spending_amount_millions_USD = models.FloatField(blank=True, null=True)
+    csr_spending_description = models.CharField(max_length=1000, blank=True)
+    pledge = models.IntegerField(null=True)
+    overmultipleyears = models.IntegerField(null=True)
+    rationumbersreported = models.FloatField(null=True)
+    rationumbersreportedinUS = models.FloatField(null=True)
+    rationumbersreportedGlobal = models.FloatField(null=True)
+    state = models.CharField(max_length=100, blank=True)
+    number_of_employees = models.FloatField(null=True)
+    company_revenue = models.FloatField(blank=True, null=True)
+    company_market_value = models.FloatField(blank=True, null=True)
+    industry_numerical_subcategory = models.IntegerField(null=True)
+    industry_subcategory_description = models.CharField(
+        max_length=100, blank=True)
+    industry_category = models.CharField(max_length=100, blank=True)
+    industry_category_description = models.CharField(
+        max_length=100, blank=True)
+    ESG_spending_category = models.CharField(max_length=100, blank=True)
+    ESG_spending_category_description = models.CharField(
+        max_length=100, blank=True)
+    company_region = models.CharField(max_length=100, blank=True)
+    spreadsheet = models.ForeignKey(Spreadsheet, on_delete=models.CASCADE)
     date_added = models.DateField(auto_now_add=True)
-    make = models.CharField(max_length=100, blank=False)
-    model = models.CharField(max_length=100, blank=False)
-    serial_number = models.CharField(max_length=100, blank=False, default="")
-    capacity = models.IntegerField(default=0)
-    connected_optimizers = models.IntegerField(default=0)
-    sku = models.CharField(max_length=100, blank=False, default="")
-    part_number = models.CharField(max_length=100, blank=False, default="")
-    active = models.BooleanField(default=True)
-    system = models.ForeignKey(SolarSystem, on_delete=models.CASCADE)
-    arrays_count = models.IntegerField(default=0)
+    pending_in_ticket_parent = models.ForeignKey(
+        TicketParent, on_delete=models.CASCADE, null=True, default=None)
 
     def __str__(self):
-        return "{} {}".format(self.serial_number, self.make)
+        return "Row {}".format(self.index_in_sheet)
 
     class Meta:
         ordering = ["id"]
 
 
-class SolarArray(models.Model):
-    date_added = models.DateField(auto_now_add=True)
-    panel_make = models.CharField(max_length=100, blank=False)
-    panel_model = models.CharField(max_length=100, blank=True)
-    module_capacity = models.IntegerField()
-    azimuth = models.IntegerField()
-    tilt_angle = models.IntegerField()
-    losses = models.IntegerField(default=0)
-    module_type = models.IntegerField(default=1)
-    array_type = models.IntegerField(default=1)
-    number_of_modules = models.IntegerField(default=1)
-    shaded_conditions = models.BooleanField(default=False)
-    note = models.CharField(max_length=100, blank=False)
-    inverter = models.ForeignKey(
-        Inverter, on_delete=models.CASCADE, null=True, default=None)
-    system = models.ForeignKey(
-        SolarSystem, on_delete=models.CASCADE, default=None, null=True)
-    last_pvwatts_call = models.DateField(blank=True)
-    pvwatts_object_id = models.IntegerField(default=0, blank=True)
+def convert_row_to_json(row):
+    return {
+        'company_ticker': row.company_ticker,
+        'year': row.year,
+        'company': row.company,
+        'cofileinitals': row.cofileinitals,
+        'ESG_spending_numerical_category': row.ESG_spending_numerical_category,
+        'csr_spending_amount_millions_USD': row.csr_spending_amount_millions_USD,
+        'csr_spending_description': row.csr_spending_description,
+        'pledge': row.pledge,
+        'overmultipleyears': row.overmultipleyears,
+        'rationumbersreported': row.rationumbersreported,
+        'rationumbersreportedinUS': row.rationumbersreportedinUS,
+        'rationumbersreportedGlobal': row.rationumbersreportedGlobal,
+        'state': row.state,
+        'number_of_employees': row.number_of_employees,
+        'company_revenue': row.company_revenue,
+        'company_market_value': row.company_market_value,
+        'industry_numerical_subcategory': row.industry_numerical_subcategory,
+        'industry_subcategory_description': row.industry_subcategory_description,
+        'industry_category': row.industry_category,
+        'industry_category_description': row.industry_category_description,
+        'ESG_spending_category': row.ESG_spending_category,
+        'ESG_spending_category_description': row.ESG_spending_category_description,
+        'company_region': row.company_region
+    }
+
+
+class SpreadsheetUserRelation(models.Model):
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    spreadsheet = models.ForeignKey(Spreadsheet, on_delete=models.CASCADE)
 
     def __str__(self):
-        return "{} ({} - {})".format(
-            self.id, self.panel_make, self.panel_model
-        )
+        return "User {}, spreadsheet {}".format(self.user, self.spreadsheet)
 
     class Meta:
         ordering = ["id"]
 
 
-class MicroInverter(models.Model):
-    date_added = models.DateField(auto_now_add=True)
-    make = models.CharField(max_length=100, blank=False)
-    model = models.CharField(max_length=100, blank=False)
-    serial_number = models.CharField(max_length=100, blank=False, default="")
-    capacity = models.IntegerField(default=0)
-    connected_optimizers = models.IntegerField(default=0)
-    sku = models.CharField(max_length=100, blank=False, default="")
-    part_number = models.CharField(max_length=100, blank=False, default="")
-    active = models.BooleanField(default=True)
-    system = models.ForeignKey(SolarSystem, on_delete=models.CASCADE)
-    array = models.ForeignKey(SolarArray, on_delete=models.CASCADE, null=True)
+class AlumniDataset(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    date_added = models.DateField()
 
     def __str__(self):
-        return "{} {}".format(self.serial_number, self.make)
+        return "Alumni Dataset {}".format(self.id)
 
     class Meta:
         ordering = ["id"]
 
 
-class PVWattsArrayInfo(models.Model):
-    date_added = models.DateField(auto_now_add=True)
-    solar_array = models.ForeignKey(SolarArray, on_delete=models.CASCADE)
-    # {ac_annual, ac_monthly: {1: {total, ac_hourly: {0: {unit, value}}}}}
-    output = models.JSONField()
+class StudentInformation(models.Model):
+    index_in_sheet = models.IntegerField()
+    first_name = models.CharField(max_length=100, blank=True)
+    last_name = models.CharField(max_length=100, blank=True)
+    employer = models.CharField(max_length=500, blank=True)
+    title = models.CharField(max_length=100, blank=True)
+    graduation_year = models.IntegerField(blank=True, null=True)
+    major = models.CharField(max_length=200, blank=True)
+    college = models.CharField(max_length=200, blank=True)
+    linkedin_page = models.CharField(max_length=200, blank=True)
+    state = models.CharField(max_length=100, blank=True)
+    industry_type = models.CharField(max_length=200, blank=True)
+    alumni_dataset = models.ForeignKey(AlumniDataset, on_delete=models.CASCADE)
+    date_added = models.DateField()
 
     def __str__(self):
-        return "Info for Array {}".format(self.solar_array)
+        return "Alumni Row {}".format(self.index_in_sheet)
 
     class Meta:
         ordering = ["id"]
 
 
-class SystemActualEnergyProduction(models.Model):
-    date_added = models.DateField(auto_now_add=True)
-    solar_system = models.ForeignKey(SolarSystem, on_delete=models.CASCADE)
-    # {ac_annual, ac_monthly: {1: {total, ac_hourly: {0: {unit, value}}}}}
-    output = models.JSONField()
-    last_requested_date = models.DateField(blank=True, null=True)
-
-    def __str__(self):
-        return "Information from Solar Edge for system {}".format(self.solar_system)
-
-    class Meta:
-        ordering = ["id"]
-
-
-class ClientInfo(models.Model):
-    date_added = models.DateField(auto_now_add=True)
-    information = models.JSONField(null=True)
-    name = models.CharField(max_length=100, blank=False)
-    account_id = models.CharField(max_length=100, blank=False)
-    user_id = models.CharField(max_length=100, blank=False)
-    installation_date = models.DateField()
-    location_country = models.CharField(max_length=100, blank=False)
-    location_state = models.CharField(max_length=100, blank=False)
-    location_city = models.CharField(max_length=100, blank=False)
-    location_address = models.CharField(max_length=100, blank=False)
-    location_zip_code = models.CharField(max_length=100, blank=False)
-    status = models.CharField(max_length=100, blank=False, default="")
-    primary_module = models.JSONField(default=dict)
-    api_name = models.CharField(max_length=100, blank=False)
-
-    def __str__(self):
-        return "Client {}{}".format(
-            self.user_id, " " + self.name if self.name else ""
-        )
-
-    class Meta:
-        ordering = ["id"]
-
-
-admin.site.register(ClientInfo)
 admin.site.register(CustomUser)
-admin.site.register(SolarSystem)
-admin.site.register(Inverter)
-admin.site.register(SolarArray)
-admin.site.register(PVWattsArrayInfo)
-admin.site.register(SystemActualEnergyProduction)
-admin.site.register(UtilityRate)
+admin.site.register(Spreadsheet)
+admin.site.register(SpreadsheetUserRelation)
+admin.site.register(Ticket)
+admin.site.register(AlumniDataset)
+admin.site.register(StudentInformation)
 
-from app.apis.solar_edge_api import create_solar_edge_users_from_bulk
-from app.apis.enphase_api import create_enphase_users_from_bulk
-
-
-try:
-    create_enphase_users_from_bulk()
-    print("Saved users from enphase")
-except:
-    print("Users from enphase could not be retrieved")
-
-try:
-    create_solar_edge_users_from_bulk()
-    print("Saved users from solar edge")
-except:
-    print("Users from enphase could not be retrieved")
+for admin_name in (ROWS_PENDING_VALIDATION_DATASET_NAME, MASTER_CSR_DATASET_NAME):
+    if not Spreadsheet.objects.filter(name=admin_name):
+        spreadsheet = Spreadsheet()
+        spreadsheet.name = admin_name
+        spreadsheet.last_updated = datetime.datetime.now()
+        spreadsheet.user = CustomUser.objects.filter(is_staff=True)[0]
+        spreadsheet.date_added = datetime.datetime.now()
+        spreadsheet.save()
+        for admin_user in CustomUser.objects.filter(is_staff=True):
+            if admin_user != spreadsheet.user:
+                relation = SpreadsheetUserRelation()
+                relation.spreadsheet = spreadsheet
+                relation.user = admin_user
+                relation.save()

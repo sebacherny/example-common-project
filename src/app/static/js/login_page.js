@@ -2,34 +2,25 @@
 const e = React.createElement;
 
 function App() {
-  const [email, setEmail] = React.useState("");
+  const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
-  const [userInactive, setUserInactive] = React.useState(false);
   const [message, setMessage] = React.useState("");
 
   const success = async (text) => {
     await localStorage.setItem("userToken", text.access);
     await localStorage.setItem("loggedInUsername", text.username);
-    if (text.is_admin) {
-      window.location = "/admin-dashboard";
-    } else {
-      if (text.first_system) {
-        window.location = "/systems/" + text.first_system.toString() + "/dashboard";
-      } else {
-        window.location = "/systems";
-      }
-    }
+    window.location = "/datasets";
   };
 
   const resendEmail = () => {
-    resend_email_api(email, () => {
+    resend_email_api(username, () => {
       alert("Email sent. Check spam");
     });
   }
 
   const checkIsEmpty = () => {
-    if (!email) {
-      setMessage("* Email is required");
+    if (!username) {
+      setMessage("* Username is required");
       return true;
     }
     if (!password) {
@@ -41,15 +32,13 @@ function App() {
 
   const tryLogin = async (e) => {
     setMessage("");
-    setUserInactive(false);
     e.preventDefault();
     if (checkIsEmpty()) {
       return;
     }
-    await login_api(email, password, success, (text) => {
+    await login_api(username, password, success, (text) => {
       if (text === "Inactive user") {
-        setMessage("User is inactive. You should have received an email.");
-        setUserInactive(true);
+        setMessage("User is inactive. You should wait for an email confirming your validation.");
       } else {
         setMessage("* " + text);
       }
@@ -70,9 +59,9 @@ function App() {
       }}>
         <form>
           <div className="mb-3">
-            <label htmlFor="email" className="form-label">Email</label>
-            <input autoFocus type="text" className="form-control" id="email" placeholder="example@123.com"
-              onChange={(e) => { setEmail(e.target.value) }} value={email}
+            <label htmlFor="username" className="form-label">Username</label>
+            <input autoFocus type="text" className="form-control" id="username" placeholder="username"
+              onChange={(e) => { setUsername(e.target.value) }} value={username}
               style={{ width: "60%" }} />
           </div>
           <div className="mb-3">
@@ -81,14 +70,9 @@ function App() {
               onChange={(e) => { setPassword(e.target.value) }} value={password}
               style={{ width: "60%" }} />
           </div>
-          <div style={{ margin: "1em", color: "#FBB142" }}>{message}</div>
-          {
-            userInactive && <div style={{ margin: "1em", color: "#FBB142" }}>
-              To have an email resent, click <button type="button" className="btn btn-default" onClick={() => resendEmail()}>here</button>
-            </div>
-          }
+          <div style={{ margin: "1em", color: "#ffffff" }}>{message}</div>
           <div style={{ margin: "1em" }}>
-            <button type="submit" style={{ marginTop: "inherit", backgroundColor: "#402E32", borderColor: "#402E32" }} className="btn btn-primary" onClick={tryLogin}>Login</button>
+            <button type="submit" style={{ marginTop: "inherit", backgroundColor: "#434575", borderColor: "#434575" }} className="btn btn-primary" onClick={tryLogin}>Login</button>
           </div>
           <div style={{ margin: "1em" }}>
             <label style={{ marginTop: "inherit" }}>

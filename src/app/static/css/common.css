@@ -3,9 +3,9 @@
 }
 
 .square-box {
-   border: solid 0.5px;
-   width: 200px;
-   height: 200px;
+    border: solid 0.5px;
+    width: 200px;
+    height: 200px;
 }
 
 .square-content {
@@ -49,32 +49,26 @@ label {
 }
 
 .loading {
-    display:    block;
-    position:   fixed;
-    z-index:    1000;
-    top:        0;
-    left:       0;
-    height:     100%;
-    width:      100%;
-    background: rgba( 255, 255, 255, .8 ) 
-                url('http://i.stack.imgur.com/FhHRx.gif') 
-                50% 50% 
-                no-repeat;
+    display: block;
+    position: fixed;
+    z-index: 1000;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background: rgba(255, 255, 255, .8) url('http://i.stack.imgur.com/FhHRx.gif') 50% 50% no-repeat;
 }
 
 .minimized_loading {
-    display:    block;
-    position:   fixed;
-    z-index:    1000;
-    top:        0;
-    left:       unset;
-    right:      0;
-    height:     10%;
-    width:      10%;
-    background: rgba( 255, 255, 255, .8 ) 
-                url('http://i.stack.imgur.com/FhHRx.gif') 
-                50% 50% 
-                no-repeat;
+    display: block;
+    position: fixed;
+    z-index: 1000;
+    top: 0;
+    left: unset;
+    right: 0;
+    height: 10%;
+    width: 10%;
+    background: rgba(255, 255, 255, .8) url('http://i.stack.imgur.com/FhHRx.gif') 50% 50% no-repeat;
 }
 
 .cross_button_for_loading {
@@ -85,4 +79,54 @@ label {
 .minimize_button_for_loading {
     position: relative;
     float: right;
+}
+
+.tabSelected {
+    background-color: rgb(201, 201, 201);
+}
+
+.mytooltip {
+    position: relative;
+    display: inline-block;
+    border-bottom: 1px dotted black;
+}
+
+.mytooltip .mytooltiptext {
+    visibility: hidden;
+    width: 200px;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+
+    /* Position the tooltip */
+    position: absolute;
+    z-index: 1;
+    top: -5px;
+    left: 105%;
+}
+
+.mytooltip:hover .mytooltiptext {
+    visibility: visible;
+}
+
+
+.table_header:hover {
+    background-color: darkslategray;
+    cursor: pointer;
+}
+
+.mt-100 {
+    margin-top: 20px
+}
+
+.container_div {
+    max-width: 1000px;
+    margin: auto;
+    margin-top: 1em;
+    margin-bottom: 1em;
+    padding: 1em;
+    border-radius: 1%;
+    border: 1px solid;
 }

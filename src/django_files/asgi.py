@@ -1,5 +1,5 @@
 """
-ASGI config for solar system project.
+ASGI config for Cinc Labs.
 
 It exposes the ASGI callable as a module-level variable named ``application``.
 

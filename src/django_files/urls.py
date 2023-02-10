@@ -16,68 +16,71 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from app.custom_serializer import CustomAuthToken
-from app.all_views import views_admin, views_api_calls, views_enphase, views_inverter, views_solar_array, views_solar_edge, views_system, views_user, views_rate
+from app.all_views import views_spreadsheet, views_user, views_tickets, views_forms, views_linkedin_scrapper, views_sports
 from app import views
 from django_files import settings
 from django.conf.urls.static import static
-from rest_framework_simplejwt.views import TokenObtainPairView
-from app import all_views
 from django.views.generic.base import RedirectView
 
-favicon_view = RedirectView.as_view(url='/static/images/favicon.webp', permanent=True)
+favicon_view = RedirectView.as_view(
+    url='/static/images/favicon.webp', permanent=True)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('login/', views.login_view),
     path('register/', views.register_view),
+    path('sports/login/', views.login_sports_view),
+    path('sports/register/', views.register_sports_view),
     path('api/register/', views_user.register_user),
+    path('api/sports/register/', views_user.register_user_sports),
     path('api/validate/', views_user.validate_user),
     path('api/send_mail/', views_user.resend_mail),
     path('welcome/<str:random_str>/', views.welcome),
     path('api/user_info/', views_user.user_info),
     path('api/token/', CustomAuthToken.as_view()),
-    path('api/systems/', views_system.systems),
-    path('api/systems/<int:system_id>/', views_system.system),
-    path('api/systems/<int:system_id>/inverter/', views_inverter.inverters),
-    path('api/systems/<int:system_id>/solar_array/', views_solar_array.solar_arrays),
-    path('api/systems/<int:system_id>/inverter/<int:inverter_id>/', views_inverter.inverter),
-    path('api/systems/<int:system_id>/solar_array/<int:solar_array_id>/', views_solar_array.solar_array),
-    path('api/systems/<int:system_id>/dashboard_info/', views_system.dashboard_view),
-    
-    path('api/systems/wizard/', views_system.wizard),
-    
-    path('systems/<int:system_id>/dashboard/', views.dashboard_view),
     path('favicon.ico/', favicon_view),
     path('', views.login_view),
     path('login/', views.login_view),
-    path('systems/<int:system_id>/', views.system_information_view),
     path('profile/', views.profile_view),
     path('api/ask_question/', views_user.ask_question),
-    path('systems/', views.all_systems_view),
-    path('api/admin/dashboard/', views_admin.all_users),
-    path('admin-dashboard/', views.admin_dashboard),
-    path('admin-dashboard/system/<int:system_id>/', views.dashboard_view),
-    path('api/admin/clients-info/', views_admin.clients_info),
-    path('clients-info/', views.clients_view),
-    path('api/admin/database-info/', views_admin.database_info),
-    path('see-database/', views.database_view),
-    
-    path('api/solar_edge/', views_solar_edge.solar_edge_system),
-    path('api/admin/solar-edge/', views_api_calls.solar_edge_all_users),
-    
-    path('api/solar_edge/inventory/<int:site_id>/', views_solar_edge.site_inventory),
-    path('api/enphase/inventory/<int:site_id>/', views_enphase.site_inventory),
-    
-    path('api/enphase/', views_enphase.enphase_system),
-    path('api/admin/enphase/', views_api_calls.enphase_all_users),
-    
-    path('api/json-view/solar-array/<int:solar_array_id>/pvwatts-info/', views_solar_array.pvwatts_info_view),
-    path('api/json-view/solar-arrays/', views_solar_array.json_all_arrays_view),
-    path('api/json-view/pvwatts-info/<int:object_id>/', views_api_calls.pvwatts_info),
-    path('api/json-view/solar-edge/<int:object_id>/', views_api_calls.solar_edge_info),
+    path('datasets', views.datasets_view),
+    path('datasets/<int:spreadsheet_id>/', views.dataset_dashboard_view),
+    path('datasets/<int:spreadsheet_id>/view-rows/',
+         views.dataset_table_view),
+    path('api/datasets/', views_spreadsheet.spreadsheets),
+    path('api/datasets/<int:spreadsheet_id>/', views_spreadsheet.spreadsheet),
+    path('api/datasets/<int:spreadsheet_id>/view-table/',
+         views_spreadsheet.table_view),
+    path('api/datasets/<int:spreadsheet_id>/rows-as-list/',
+         views_spreadsheet.get_rows_as_list),
+    path('api/datasets/<int:spreadsheet_id>/custom-graph/',
+         views_spreadsheet.custom_graph_json),
+    path('api/store_sheet_rows/', views_spreadsheet.store_rows),
+    path('api/datasets/<int:spreadsheet_id>/share/',
+         views_spreadsheet.share_spreadsheet_with_user),
+    path('api/datasets/<int:spreadsheet_id>/user/<int:user_id>/unshare/',
+         views_spreadsheet.unshare_spreadsheet_with_user),
 
-    path('rate-creation/', views.rate_creation_view),
-    path('api/money_rates/', views_rate.rates),
-    
+    path('api/tickets/', views_tickets.tickets),
+    path('api/tickets/<int:ticket_id>/', views_tickets.one_ticket),
+    path('api/ticket/<int:ticket_id>/approve-rows/',
+         views_tickets.validate_rows_ticket),
+    path('tickets/', views.see_tickets),
+    path('tickets/<int:ticket_id>/', views.see_one_ticket),
+    path('api/tickets/<int:ticket_id>/rows/<int:row_id>/',
+         views_tickets.ticket_row),
+
+    path('api/form/', views_spreadsheet.upload_form_data),
+    path('add-data/', views.upload_form),
+    path('api/form_data/', views_forms.get_form_data),
+
+    path('linkedin-scrapper/', views.linkedin_scrapper_view),
+    path('api/linkedin_scrapper/', views_linkedin_scrapper.get_scrapped_data),
+
+    path('sports-dashboard', views.sports_dashboard_view),
+    path('api/students-dataset/', views_sports.sports_dataset),
+
+    path('test-url', views.test_url_view),
+
+    path('health/', views.health),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-

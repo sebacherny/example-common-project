@@ -4,51 +4,56 @@ const e = React.createElement;
 
 function App() {
 
-  var yesterday = new Date(new Date() - 24 * 3600 * 1000);
-  var date_str = yesterday.getFullYear() + "-";
-  if (yesterday.getMonth() + 1 < 10) {
-    date_str += "0";
-  }
-  date_str += (yesterday.getMonth() + 1) + "-";
-  if (yesterday.getDate() < 10) {
-    date_str += "0";
-  }
-  date_str += yesterday.getDate();
-  const MONTHS = ["January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"];
-
-  const [dashboardInfo, setDashboardInfo] = React.useState(null);
   const [loggedInUsername, setLoggedInUsername] = React.useState(null);
   const [pageLanguage, setPageLanguage] = React.useState("en");
-  const [systemData, setSystemData] = React.useState(null);
-  const [period, setPeriod] = React.useState("ac_day");
+  const [datasetData, setDatasetData] = React.useState(null);
   const [userInfo, setUserInfo] = React.useState(null);
-  const [selectedDate, setSelectedDate] = React.useState(date_str);
-  const [selectedMonth, setSelectedMonth] = React.useState(yesterday.getMonth());
+  const [graphType, setGraphType] = React.useState('bar');
+  const [selectedTab, setSelectedTab] = React.useState('homeTab');
+  // 'overviewTab', 'environment', 'governance', 'social', 'diversity'
+  const [heatMapFilter, setHeatMapFilter] = React.useState('overviewTab');
+  const [overviewIndustriesFilter, setOverviewIndustriesFilter] = React.useState('overviewTab');
+  const [selectedYear, setSelectedYear] = React.useState(null);
+  const [yearOptions, setYearOptions] = React.useState([]);
+  const [selectedDiversityMetric, setSelectedDiversityMetric] = React.useState('');
+  const [diversityMetricOptions, setDiversityMetricOptions] = React.useState([]);
+  const [selectedTopCompaniesNumber, setSelectedTopCompaniesNumber] = React.useState(10);
+  const [showInformationModal, setShowInformationModal] = React.useState(false);
+  const [tabSelectedInformationModal, setTabSelectedInformationModal] = React.useState('table');
 
-  const systemId = getSystemId();
+  const spreadsheetId = getSpreadsheetId();
 
   const getData = () => {
+    add_loading(window.document.body);
     getLoggedInUsername((username) => { setLoggedInUsername(username) });
     getPageLanguage((lang => { setPageLanguage(lang); }));
-    get_dashboard_info_api(systemId, selectedDate, period, (data) => { setDashboardInfo(data.data); });
-    get_system_info_api(systemId, (data) => setSystemData(data.data));
-    get_user_data_api((data) => setUserInfo(data.data))
+    get_user_data_api((data) => setUserInfo(data.data));
+    get_spreadsheet_dashboard_api(spreadsheetId, (data) => {
+      const selectedyearOption = data.data.year_options[0];
+      createTopIndustriesSpendingGraph(data.data, 'overviewTab', 'overviewTab', selectedyearOption);
+      drawESGdonut(data.data, selectedyearOption);
+      setYearOptions(data.data.year_options);
+      setSelectedYear(selectedyearOption);
+      setDiversityMetricOptions(data.data['diversity'][selectedyearOption]['metric_options'])
+      setSelectedDiversityMetric(data.data['diversity'][selectedyearOption]['metric_options'][0]);
+      setDatasetData(data.data);
+      remove_loading();
+    });
   };
 
   const sendQuestion = () => {
     const text = document.querySelector("#question_textarea").value;
     if (!text) {
-      alert("Email text cannot be empty");
+      alert("Message cannot be empty");
       return;
     }
     document.querySelector("#ask_question_btn").setAttribute("disabled", "true");
-    ask_question_api(text, () => {
+    ask_question_api(text, datasetData.id, () => {
       Swal.fire({
         title: 'Message sent!',
         text: "The admin will read your message and answer via email",
         icon: 'success',
-        confirmButtonColor: "#402E32",
+        confirmButtonColor: "#434575",
       });
       document.querySelector("#question_textarea").value = "";
       document.querySelector("#ask_question_btn").removeAttribute("disabled");
@@ -65,92 +70,24 @@ function App() {
     );
   };
 
-  const isValidDate = (date_str) => {
-    const y = parseInt(date_str.substr(0, 4));
-    const m = parseInt(date_str.substr(5, 2));
-    const d = parseInt(date_str.substr(8, 2));
-    return y > 2000 && m <= 12 && m >= 1 && d >= 1 && d <= 31;
-  }
-
-  const changedDate = (date_value) => {
-    if (!isValidDate(date_value)) {
-      setSelectedDate(date_value);
-      return;
-    }
-    add_loading(window.document.body);
-    get_dashboard_info_api(systemId, date_value, period, (data) => {
-      setDashboardInfo(data.data);
-      setSelectedDate(date_value);
-      setTimeout(remove_loading, 500);
-    });
-  };
-
-  const changedPeriod = (newPeriod) => {
-    add_loading(window.document.body);
-    get_dashboard_info_api(systemId, selectedDate, newPeriod, (data) => {
-      setDashboardInfo(data.data);
-      setPeriod(newPeriod);
-      setTimeout(remove_loading, 500);
-    });
-  };
-
-  const constructEnergyGraph = () => {
-    if (document.getElementById('energyChart') && dashboardInfo != null) {
-      if (window.energyChartObj != undefined) {
-        window.energyChartObj.destroy();
+  const constructVerticalBarGraph = (name, currentDatasetData) => {
+    if (document.getElementById(name) != null && currentDatasetData != null && currentDatasetData[name] != null) {
+      if (window.barGraphs == undefined) {
+        window.barGraphs = {};
       }
-      if (!isValidDate(selectedDate)) {
-        return;
+      if (window.barGraphs[name] != undefined) {
+        window.barGraphs[name].destroy();
       }
-      var xValues = []
-      var mepValues = [];
-      var aepValues = [];
-      for (var i = 0;
-        i < Math.max(dashboardInfo.expected_production.values.length, dashboardInfo.actual_production.values.length);
-        i++) {
-        if (period === "ac_year") {
-          xValues.push(MONTHS[i]);
-        } else {
-          xValues.push(i + 1);
-        }
-        if (i < dashboardInfo.expected_production.values.length) {
-          mepValues.push((dashboardInfo.expected_production.values[i] / 1000).toFixed(1));
-        } else {
-          mepValues.push(0);
-        }
-        if (i < dashboardInfo.actual_production.values.length) {
-          aepValues.push(dashboardInfo.actual_production.values[i].toFixed(1));
-        } else {
-          aepValues.push(0);
-        }
-      }
-      // var barColors = ["red", "green"];
-      var mepColor = "#402E32";
-      var aepColor = "#FBB142";
-
-      var pretty_title = "Production for ";
-      if (period === "ac_month") {
-        pretty_title += MONTHS[parseInt(selectedDate.substr(5, 2)) - 1] + " " + selectedDate.substr(0, 4);
-      } else if (period == "ac_day") {
-        pretty_title += selectedDate;
-      } else {
-        pretty_title += selectedDate.substr(0, 4);
-      }
-
-      window.energyChartObj = new Chart("energyChart", {
+      window.barGraphs[name] = new Chart(name, {
         type: "bar",
         data: {
-          labels: xValues,
+          labels: currentDatasetData[name]['x_values'],
           datasets: [
             {
-              backgroundColor: mepColor,
-              data: mepValues,
-              label: 'Model',
-            },
-            {
-              backgroundColor: aepColor,
-              data: aepValues,
-              label: 'Real',
+              backgroundColor: currentDatasetData[name]['background_color'] || '#BA68C8',
+              data: currentDatasetData[name]['y_values'],
+              //label: currentDatasetData[name]['graph_label'] ||
+              //  'Total = ' + addCommas(currentDatasetData[name]['total_y_sum']) + ' M',
             },
           ]
         },
@@ -160,167 +97,457 @@ function App() {
               display: true,
               ticks: {
                 beginAtZero: true,
+                stepSize: 5,
               }
             }],
           },
-          legend: { display: true },
+          legend: { display: false },
           title: {
-            display: true,
-            text: pretty_title
+            display: false,
+            // text: currentDatasetData[name]['title']
           }
         }
       });
     }
   }
 
-  const constructMoneyGraph = () => {
-    if (document.getElementById('moneyChart') && dashboardInfo != null) {
-      if (window.moneyChartObj != undefined) {
-        window.moneyChartObj.destroy();
+  const createTopIndustriesSpendingGraph = (currentCollecionData, currentTab, categoryFilter, currentYear) => {
+    setTimeout(() => {
+      if (currentTab === 'overviewTab') {
+        constructVerticalBarGraph('bar_graph_industry_total_usds', currentCollecionData[categoryFilter][currentYear]);
+      } else if (currentTab === 'diversity') {
+        constructVerticalBarGraph('top_industries',
+          currentCollecionData[currentTab][currentYear]['metric_graphs'][selectedDiversityMetric]);
       }
-      if (!isValidDate(selectedDate)) {
-        return;
-      }
-      var xValues = []
-      var vepValues = [];
-      for (var i = 0;
-        i < dashboardInfo.value_of_energy_produced.length;
-        i++) {
-        if (period === "ac_year") {
-          xValues.push(MONTHS[i]);
-        } else if (period === "ac_month") {
-          const dayNumString = (i + 1).toString();
-          const currentDayDate = selectedDate.substr(0, 8) + (dayNumString.length === 1 ? "0" : "") + dayNumString;
-          const utc_weekday = new Date((new Date(currentDayDate)).valueOf() + (new Date().getTimezoneOffset() * 60 * 1000)).getDay();
-          if (utc_weekday === 0 || utc_weekday === 6) {
-            xValues.push(dayNumString + " (S) ");
-          } else {
-            xValues.push(dayNumString);
-          }
-        } else {
-          xValues.push(i + 1);
-        }
-        vepValues.push((dashboardInfo.value_of_energy_produced[i] / 1).toFixed(1));
-      }
-      // var barColors = ["red", "green"];
-      var vepColor = "#FBB142";
+    }, 100);
+  }
 
-      var pretty_title = "Earnings for ";
-      if (period === "ac_month") {
-        pretty_title += MONTHS[parseInt(selectedDate.substr(5, 2)) - 1] + " " + selectedDate.substr(0, 4);
-      } else if (period == "ac_day") {
-        pretty_title += selectedDate;
-      } else {
-        pretty_title += selectedDate.substr(0, 4);
-      }
+  const changeOverviewIndustriesFilter = (newIndustriesFilter) => {
+    createTopIndustriesSpendingGraph(datasetData, selectedTab, newIndustriesFilter, selectedYear);
+    setOverviewIndustriesFilter(newIndustriesFilter);
+  }
 
-      window.moneyChartObj = new Chart("moneyChart", {
-        type: "bar",
-        data: {
-          labels: xValues,
-          datasets: [
-            {
-              backgroundColor: vepColor,
-              data: vepValues,
-              label: '$',
+  const changeDiversityMetricFilter = (newMetric) => {
+    constructVerticalBarGraph('top_industries',
+      datasetData[selectedTab][selectedYear]['metric_graphs'][newMetric]);
+    setSelectedDiversityMetric(newMetric);
+  }
+
+  const changeYearFilter = (newYear) => {
+    if (selectedTab === 'diversity') {
+      constructVerticalBarGraph('top_industries',
+        datasetData[selectedTab][newYear]['metric_graphs'][selectedDiversityMetric]);
+    }
+    setSelectedYear(newYear);
+  }
+
+  const drawESGdonut = (currentData, currentYear) => {
+    setTimeout(() => constructDonutGraph('donut_graph_esg_category', currentData['overviewTab'][currentYear]),
+      100);
+  }
+
+  const constructHorizontalBarGraph = (name, currentDatasetData) => {
+    if (document.getElementById(name) && currentDatasetData != null) {
+      var options = {
+        series: [{
+          name: '',
+          data: currentDatasetData[name]['y_values'].map((y, idx) => {
+            return {
+              x: currentDatasetData[name]['x_values'][idx],
+              y: currentDatasetData[name]['y_values'][idx],
+              fillColor: currentDatasetData[name]['background_color'],
             }
-          ]
+          }),
+        }],
+        chart: {
+          type: 'bar',
+          height: 350
         },
-        options: {
-          scales: {
-            yAxes: [{
-              display: true,
-              ticks: {
-                beginAtZero: true,
-              }
-            }],
-          },
-          legend: { display: true },
-          title: {
-            display: true,
-            text: pretty_title
+        plotOptions: {
+          bar: {
+            borderRadius: 4,
+            horizontal: true,
           }
-        }
-      });
+        },
+        dataLabels: {
+          enabled: false
+        },
+        yaxis: {
+          labels: {
+            formatter: function (value) {
+              if (value === '') {
+                return '';
+              }
+              if (isNaN(value)) {
+                return value;
+              }
+              return '$' + addCommas(value) + ' M';
+            }
+          }
+        },
+        //xaxis: {
+        //  categories: currentDatasetData[name]['x_values'],
+        //}
+      };
+
+      if (window.horizontalBarGraph != undefined) {
+        window.horizontalBarGraph.destroy();
+      }
+
+      window.horizontalBarGraph = new ApexCharts(document.querySelector("#" + name), options);
+      window.horizontalBarGraph.render();
+      /*
+      var data = [{
+        type: 'bar',
+        x: currentDatasetData[name]['y_values'],
+        y: currentDatasetData[name]['x_values'].map(company => company.toString().split(' ').join('<br />')),
+        orientation: 'h',
+        marker: {
+          color: currentDatasetData[name]['background_color'] || '#BA68C8',
+          width: 1
+        },
+      }];
+
+      Plotly.newPlot(name, data, { 'title': '' });
+      */
+
     }
   }
 
-  constructEnergyGraph();
-  constructMoneyGraph();
+  if (datasetData != null &&
+    document.getElementById('bar_graph_esg_tab_top_5_companies') != null &&
+    (selectedTab === 'environment' || selectedTab === 'governance' || selectedTab === 'social')
+  ) {
+    // constructVerticalBarGraph('bar_graph_esg_tab_top_5_companies', datasetData[selectedTab]);
+    constructHorizontalBarGraph('bar_graph_esg_tab_top_5_companies', datasetData[selectedTab][selectedYear]);
+  }
+
+
+  const ask_for_graph_and_load = () => {
+    var data = {};
+    if (graphType == 'bar') {
+      const barXfield = document.getElementById('select_barXfield').value;
+      const barYfield = document.getElementById('select_barYfield').value;
+      data = { graphType, barXfield, barYfield };
+    } else {
+      const donutCategory = document.getElementById('select_donutCategory').value;
+      const donutValue = document.getElementById('select_donutValue').value;
+      data = { graphType, donutCategory, donutValue };
+    }
+    do_get_custom_graph_api(spreadsheetId, data, (graphDict) => {
+      let newDatasetData = datasetData;
+      newDatasetData['custom_graph'] = graphDict.data;
+      setDatasetData(newDatasetData);
+      if (graphType == 'bar') {
+        if (window.donutGraphs['custom_graph'] != undefined) {
+          window.donutGraphs['custom_graph'].destroy();
+        }
+        constructVerticalBarGraph('custom_graph', newDatasetData);
+      } else {
+        if (window.barGraphs['custom_graph'] != undefined) {
+          window.barGraphs['custom_graph'].destroy();
+        }
+        constructDonutGraph('custom_graph', newDatasetData);
+      }
+      document.getElementById('custom_graph').style.display = 'block';
+    })
+  }
+
+  const changeBroadCategory = () => {
+    if (selectedTab !== 'homeTab') {
+      constructVerticalBarGraph('top_categories', datasetData[selectedTab][selectedYear]);
+    }
+  }
+  if (datasetData != null) {
+    changeBroadCategory();
+  }
+
+  const clickOnTabButton = (tabName) => {
+    setSelectedTab(tabName);
+    if (tabName === 'overviewTab') {
+      createTopIndustriesSpendingGraph(datasetData, 'overviewTab', overviewIndustriesFilter, selectedYear);
+      drawESGdonut(datasetData, selectedYear);
+    } else if (tabName === 'diversity') {
+      createTopIndustriesSpendingGraph(datasetData, 'diversity', null, selectedYear);
+    }
+    if (tabName === 'diversity') {
+      const tabYearOptions = datasetData.year_options.filter(opt => opt !== 'ALL').map(yy => yy.toString());
+      if (tabYearOptions.length > 0) {
+        if (!tabYearOptions.includes(selectedYear)) {
+          setSelectedYear(tabYearOptions[0]);
+        }
+        setYearOptions(tabYearOptions);
+      }
+    } else {
+      setYearOptions(datasetData.year_options);
+    }
+  }
+  const container = document.getElementById('regions_div');
+  if (datasetData != null && container != null && container != undefined) {
+    google.charts.load('current', {
+      'packages': ['geochart'],
+    });
+    google.charts.setOnLoadCallback(drawRegionsMap);
+
+    function drawRegionsMap() {
+      let dataArray = [['State', 'Popularity']];
+      var heatMapData = datasetData[heatMapFilter][selectedYear]['heat_map'];
+      if (selectedTab === 'diversity') {
+        if (datasetData['diversity'][selectedYear]['metric_graphs'][selectedDiversityMetric] != null) {
+          heatMapData = datasetData['diversity'][selectedYear]['metric_graphs'][selectedDiversityMetric]['heat_map'];
+        } else {
+          heatMapData = { 'states': [], 'values': [], 'scale_colors': [] };
+        }
+      }
+      for (var i = 0; i < heatMapData['states'].length; i++) {
+        const state = heatMapData['states'][i];
+        const value = heatMapData['values'][i];
+        dataArray.push(['US-' + state, value]);
+      }
+      var data = google.visualization.arrayToDataTable(dataArray);
+
+      var options = {
+        'region': 'US',
+        'colors': heatMapData['scale_colors'],
+        'dataMode': 'markers',
+        'resolution': 'provinces'
+      };
+
+      var chart = new google.visualization.GeoChart(container);
+
+      chart.draw(data, options);
+    }
+  }
 
   React.useEffect(() => {
     getData();
   }, []);
 
   getLoggedInUsername((username) => { setLoggedInUsername(username) });
+  const isAdminBool = userInfo && userInfo.is_admin ? true : false;
+
+  window.addEventListener('keyup', (ev) => {
+    doIfEscapePressed(ev, () => { setShowInformationModal(false); })
+  }, false);
+
+  if (selectedTab === 'diversity') {
+    const overviewValues = datasetData[selectedTab][selectedYear]['metric_graphs'][selectedDiversityMetric] != null ?
+      datasetData[selectedTab][selectedYear]['metric_graphs'][selectedDiversityMetric]['overview_values'] :
+      [];
+    if (overviewValues.length && selectedTopCompaniesNumber > overviewValues.length) {
+      setSelectedTopCompaniesNumber(overviewValues.length);
+    }
+  }
 
   return (
     <div>
       <AppHeader />
       <UserHeader loggedInUsername={loggedInUsername} setLoggedInUsername={setLoggedInUsername} redirectWhenLoggedOut={true}
-        is_admin={userInfo && userInfo.is_admin} pageLanguage={pageLanguage} setPageLanguage={(lang) => { setLocalStorageLanguage(lang); setPageLanguage(lang); }}
+        is_admin={isAdminBool}
+        pageLanguage={pageLanguage} setPageLanguage={(lang) => { setLocalStorageLanguage(lang); setPageLanguage(lang); }}
+        tickets_count={userInfo != null ? userInfo.tickets_count : 0}
+        is_client_admin={userInfo != null ? userInfo.is_client_admin : false}
       />
-      <SystemHeader systemData={systemData} is_dashboard_view={true} />
-      <div style={{
-        maxWidth: "800px", margin: "auto", marginTop: "1em", marginBottom: "1em",
-        padding: "1em"
-      }} className="shadow">
-        {dashboardInfo != null &&
+      <DatasetHeader
+        datasetData={datasetData}
+        is_admin={isAdminBool}
+      />
+      <InformationModal
+        showModal={showInformationModal} setShowModal={setShowInformationModal}
+        setTabSelected={setTabSelectedInformationModal} tabSelected={tabSelectedInformationModal}
+        tableElement={
+          <table style={{ border: 'solid 1px', width: '100%' }}>
+            <thead>
+              <tr>
+                <th style={{ border: 'solid 1px' }}>Key</th>
+                <th style={{ border: 'solid 1px' }}>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ border: 'solid 1px' }}>Key 1</td>
+                <td style={{ border: 'solid 1px' }}>Value 1</td>
+              </tr>
+            </tbody>
+          </table>
+        }
+      />
+      <div className='container_div'>
+        {datasetData != null &&
           <div>
-            <div style={{ textAlign: "center" }}>
-              <select value={period} onChange={(e) => changedPeriod(e.target.value)}>
-                <option value="ac_day">Day</option>
-                <option value="ac_month">Month</option>
-                <option value="ac_year">Year</option>
-              </select>
-              <input type="date" id="start" name="trip-start"
-                value={selectedDate} onChange={(e) => changedDate(e.target.value)}></input>
-              <select style={{ display: 'none' }} value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
-                <option value={0}>January</option>
-                <option value={1}>February</option>
-                <option value={2}>March</option>
-                <option value={3}>April</option>
-                <option value={4}>May</option>
-                <option value={5}>June</option>
-                <option value={6}>July</option>
-                <option value={7}>August</option>
-                <option value={8}>September</option>
-                <option value={9}>October</option>
-                <option value={10}>November</option>
-                <option value={11}>December</option>
-              </select>
+            <div style={{ display: "flex", marginRight: '5px', marginBottom: '20px' }}>
+              <button type="button"
+                className={"btn " + (selectedTab == 'homeTab' ? 'tabSelected' : '')}
+                id="homeTabBtn"
+                style={{
+                  marginRight: '20px',
+                  color: 'black', borderColor: 'black', border: '3px solid'
+                }}
+                onClick={() => { clickOnTabButton('homeTab') }}>Home</button>
+              <button type="button"
+                className={"btn " + (selectedTab == 'overviewTab' ? 'tabSelected' : '')}
+                id="overviewTabBtn"
+                style={{
+                  marginRight: '20px',
+                  color: '#4C22B3', borderColor: '#4C22B3', border: '3px solid'
+                }}
+                onClick={() => { clickOnTabButton('overviewTab') }}>CSR Overview</button>
+              <button type="button"
+                className={"btn " + (selectedTab == 'environment' ? 'tabSelected' : '')}
+                id="environmentBtn"
+                style={{
+                  marginRight: '20px',
+                  color: '#3D7345', borderColor: '#3D7345', border: '3px solid'
+                }}
+                onClick={() => { clickOnTabButton('environment') }}>Environment</button>
+              <button type="button"
+                className={"btn " + (selectedTab == 'social' ? 'tabSelected' : '')}
+                id="socialBtn"
+                style={{
+                  marginRight: '20px',
+                  color: '#FFB43F', borderColor: '#FFB43F', border: '3px solid'
+                }}
+                onClick={() => { clickOnTabButton('social') }}>Social</button>
+              <button type="button"
+                className={"btn " + (selectedTab == 'governance' ? 'tabSelected' : '')}
+                id="governanceBtn"
+                style={{
+                  marginRight: '20px',
+                  color: '#0533FF', borderColor: '#0533FF', border: '3px solid'
+                }}
+                onClick={() => { clickOnTabButton('governance') }}>Governance</button>
+              <button type="button"
+                className={"btn " + (selectedTab == 'diversity' ? 'tabSelected' : '')}
+                id="diversityBtn"
+                style={{
+                  marginRight: '20px',
+                  color: '#FF4114', borderColor: '#FF4114', border: '3px solid'
+                }}
+                onClick={() => { clickOnTabButton('diversity') }}>Diversity Metrics</button>
             </div>
-            <div style={{ display: "flex", flexDirection: "row", marginBottom: "5px" }}>
+            {
+              selectedTab === 'homeTab' ? null :
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ marginRight: '1em' }}>Period: </label>
+                  <select value={selectedYear}
+                    onChange={(e) => {
+                      const selectedyearOption = e.target.value;
+                      createTopIndustriesSpendingGraph(datasetData, 'overviewTab', overviewIndustriesFilter, selectedyearOption);
+                      drawESGdonut(datasetData, selectedyearOption);
+                      changeYearFilter(selectedyearOption);
+                    }}>
+                    {yearOptions.map((year, idx) => <option key={idx} value={year}>{year}</option>)}
+                  </select>
+                </div>
+            }
+            {datasetData != null && selectedTab === 'homeTab' &&
+              <HomeTab
+                datasetData={datasetData}
+              />
+            }
+            {datasetData != null && selectedTab === 'overviewTab' &&
+              <CsrOverviewTab
+                datasetData={datasetData}
+                selectedTab={selectedTab}
+                selectedYear={selectedYear}
+                heatMapFilter={heatMapFilter} setHeatMapFilter={setHeatMapFilter}
+                overviewIndustriesFilter={overviewIndustriesFilter} changeOverviewIndustriesFilter={changeOverviewIndustriesFilter}
+                showInformationModal={showInformationModal}
+                setShowInformationModal={setShowInformationModal}
+              />
+            }
+            {datasetData != null &&
+              (selectedTab === 'environment' || selectedTab === 'governance' || selectedTab === 'social') &&
+              <ESGTab
+                datasetData={datasetData}
+                selectedTab={selectedTab}
+                selectedYear={selectedYear}
+                showInformationModal={showInformationModal}
+                setShowInformationModal={setShowInformationModal}
+              />
+            }
+            {datasetData != null && selectedTab === 'diversity' &&
+              <DiversityMetricsTab
+                datasetDataForYear={datasetData[selectedTab][selectedYear]}
+                selectedTab={selectedTab}
+                selectedYear={selectedYear}
+                selectedDiversityMetric={selectedDiversityMetric}
+                setSelectedDiversityMetric={changeDiversityMetricFilter}
+                diversityMetricOptions={diversityMetricOptions}
+                setDiversityMetricOptions={setDiversityMetricOptions}
+                selectedTopCompaniesNumber={selectedTopCompaniesNumber}
+                setSelectedTopCompaniesNumber={setSelectedTopCompaniesNumber}
+                showInformationModal={showInformationModal}
+                setShowInformationModal={setShowInformationModal}
+                companiesCount={datasetData['companies_count_by_year'][selectedYear]}
+              />
+            }
+            {datasetData != null && false && // FALSE HERE TO AVOID SHOWING THIS
+              <div style={{ border: 'solid 1px', marginTop: '5px' }} >
+                <label style={{ marginLeft: '5px' }}>Type of graph:</label>
+                <select style={{ marginLeft: '5px' }} value={graphType} onChange={(e) => setGraphType(e.target.value)}>
+                  <option value="bar">Bar graph</option>
+                  <option value="donut">Donut graph</option>
+                </select>
+                <br />
+                {graphType == 'bar' &&
+                  <div>
+                    <label style={{ marginLeft: '5px' }}>X field for bar graph:</label>
+                    <select style={{ marginLeft: '5px' }} id="select_barXfield">
+                      {datasetData['all_fields'].map((field, idx) =>
+                        <option key={idx} value={field}>{field}</option>
+                      )}
+                    </select>
+                    <br />
+                    <label style={{ marginLeft: '5px' }}>Y field for bar graph:</label>
+                    <select style={{ marginLeft: '5px' }} id="select_barYfield">
+                      {datasetData['all_fields'].map((field, idx) =>
+                        <option key={idx} value={field}>{field}</option>
+                      )}
+                    </select>
+                    <br />
+                  </div>
+                }
+                {graphType == 'donut' &&
+                  <div>
+                    <label style={{ marginLeft: '5px' }}>Category for donut:</label>
+                    <select style={{ marginLeft: '5px' }} id="select_donutCategory">
+                      {datasetData['all_fields'].map((field, idx) =>
+                        <option key={idx} value={field}>{field}</option>
+                      )}
+                    </select>
+                    <br />
+                    <label style={{ marginLeft: '5px' }}>Values to aggregate:</label>
+                    <select style={{ marginLeft: '5px' }} id="select_donutValue">
+                      {datasetData['all_fields'].map((field, idx) =>
+                        <option key={idx} value={field}>{field}</option>
+                      )}
+                    </select>
+                    <br />
+                  </div>
+                }
+                <button style={{
+                  backgroundColor: "#434575", borderColor: "#434575",
+                  marginLeft: '5px'
+                }}
+                  className="btn btn-primary"
+                  onClick={() => ask_for_graph_and_load()}>Get graph</button>
+                <canvas id="custom_graph"
+                  style={{
+                    width: "100%", maxWidth: "700px",
+                    display: 'none'
+                  }}></canvas>
+                <br />
+              </div>
+            }
 
-              <div style={{ padding: "1em", textAlign: "center" }}>
-                <label>Energy Produced</label>
-                <div className="square-box">
-                  <span className="square-content">{(dashboardInfo.actual_production.values.reduce((partialSum, a) => partialSum + a, 0)).toFixed(2)} {dashboardInfo.actual_production.unit}</span>
-                </div>
-              </div>
-              <div style={{ padding: "1em", textAlign: "center" }}>
-                <label>Expected Production</label>
-                <div className="square-box">
-                  <span className="square-content">{(dashboardInfo.expected_production.values.reduce((partialSum, a) => partialSum + a, 0) / 1000).toFixed(2)} {dashboardInfo.expected_production.unit}</span>
-                </div>
-              </div>
-              <div style={{ padding: "1em", textAlign: "center" }}>
-                <label>Value of energy produced</label>
-                <div className="square-box">
-                  <span className="square-content">{dashboardInfo.value_of_energy_produced.reduce((partialSum, a) => partialSum + a, 0).toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-            <canvas id="energyChart" style={{ width: "100%", maxWidth: "700px" }}></canvas>
-            <br />
-            <canvas id="moneyChart" style={{ width: "100%", maxWidth: "700px" }}></canvas>
-            {userInfo && userInfo.is_admin === false &&
-              <div style={{ textAlign: "center" }}>
-                <label>Ask a question</label>
+            {!isAdminBool &&
+              <div style={{ textAlign: "center", marginTop: '20px' }}>
+                <label>Submit a Request</label>
                 <br />
                 <textarea id="question_textarea" style={{ width: "50%", height: "100px" }}></textarea>
                 <br />
-                <button id="ask_question_btn" style={{ backgroundColor: "#402E32", borderColor: "#402E32" }} className="btn btn-primary" onClick={() => { sendQuestion(); }}>Send question</button>
+                <button id="ask_question_btn" style={{ backgroundColor: "#434575", borderColor: "#434575" }} className="btn btn-primary" onClick={() => { sendQuestion(); }}>Send question</button>
               </div>
             }
           </div>

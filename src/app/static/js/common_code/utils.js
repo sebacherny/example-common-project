@@ -63,3 +63,147 @@ function create_modal(header_txt, body_text, validate, callback, modal_size){
 	$(modal).modal("show");
 }
 */
+
+function addCommas(num) {
+	const splitted = num.toString().split('.');
+	var numStr = splitted[0];
+	var ret = '';
+	for (var i = 0; i < numStr.length; i++) {
+		ret += numStr[i];
+		if ((numStr.length - 1 - i) % 3 === 0 && i != numStr.length - 1) {
+			ret += ',';
+		}
+	}
+	if (splitted.length > 1) {
+		ret += '.' + splitted[1];
+	}
+	return ret;
+}
+
+function csvFileToJSON(file, json_success) {
+	try {
+		var reader = new FileReader();
+		reader.readAsBinaryString(file);
+		reader.onload = function (e) {
+			var jsonData = [];
+			var headers = [];
+			var rows = e.target.result.split("\r\n");
+			for (var i = 0; i < rows.length; i++) {
+				var cells_except_for_commas = rows[i].split(",");
+				var cells = [];
+				var must_join = false;
+				var complete_value = "";
+				for (const v of cells_except_for_commas) {
+					complete_value += v;
+					if (complete_value.length > 0 && complete_value[0] == '"' && complete_value[complete_value.length - 1] != '"') {
+						continue;
+					} else {
+						if (complete_value.length > 0 && complete_value[0] == '"') {
+							cells.push(complete_value.substring(1, complete_value.length - 1));
+						} else {
+							cells.push(complete_value);
+						}
+						complete_value = "";
+					}
+				}
+				var rowData = {};
+				for (var j = 0; j < cells.length; j++) {
+					if (i == 0) {
+						var headerName = cells[j].trim();
+						headers.push(headerName);
+					} else {
+						var key = headers[j];
+						if (key) {
+							rowData[key] = cells[j].trim();
+						}
+					}
+				}
+				//skip the first row (header) data
+				if (i != 0) {
+					jsonData.push(rowData);
+				}
+			}
+			json_success(jsonData);
+		}
+	} catch (e) {
+		console.error(e);
+	}
+}
+
+
+function xlsxFileToJSON(file, json_success) {
+	var reader = new FileReader();
+	reader.onload = function (e) {
+		var data = e.target.result;
+		var workbook = XLSX.read(data, {
+			type: 'binary'
+		});
+		const sheetName = workbook.SheetNames[0];
+		const spreadsheet_obj = XLSX.utils.sheet_to_row_object_array(workbook.Sheets[sheetName])
+		json_success(spreadsheet_obj);
+	};
+
+	reader.onerror = function (ex) {
+		console.log(ex);
+	};
+	reader.readAsBinaryString(file);
+}
+
+function downloadCsvFromHeadersAndRows(headers, rows, title) {
+	const headersRow = headers.join(',');
+	var comma_separated_rows = [headersRow];
+	for (const row of rows) {
+		comma_separated_rows.push('"' + row.join('","') + '"');
+	}
+	const blob = new Blob([comma_separated_rows.join('\n')], { type: 'text/csv' });
+	const url = window.URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.setAttribute('href', url);
+	a.setAttribute('download', title);
+	a.click();
+}
+
+function downloadCsv(datasetId, datasetName) {
+	get_dataset_rows_as_list_api(datasetId, (data) => {
+		downloadCsvFromHeadersAndRows(data.headers, data.rows, datasetName + '.csv');
+	});
+}
+
+function doIfEscapePressed(event, funcCall) {
+	event = event || window.event;
+	var key = event.which || event.key || event.keyCode;
+	if (key === 27) { // escape
+		funcCall();
+	}
+};
+
+function constructDonutGraph(name, currentDatasetData, displayBool = true) {
+	if (document.getElementById(name) != null && currentDatasetData != null) {
+		if (window.donutGraphs == undefined) {
+			window.donutGraphs = {};
+		}
+		if (window.donutGraphs[name] != undefined) {
+			window.donutGraphs[name].destroy();
+		}
+		const data = {
+			labels: currentDatasetData[name]['x_values'],
+			datasets: [{
+				data: currentDatasetData[name]['y_values'],
+				backgroundColor: currentDatasetData[name]['colors'],
+				hoverOffset: 4
+			}]
+		};
+		console.log(name)
+		console.log(data)
+
+		window.donutGraphs[name] = new Chart(name, {
+			type: 'pie',
+			data: data,
+			options: {
+				legend: {
+					display: displayBool
+				}
+			}
+		});
+	}
+}

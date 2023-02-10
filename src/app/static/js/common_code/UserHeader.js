@@ -12,45 +12,55 @@ class UserHeader extends React.Component {
             await localStorage.removeItem("loggedInUsername");
             this.props.setLoggedInUsername(null);
             if (this.props.redirectWhenLoggedOut) {
-                window.location = "/login";
+                window.location = this.props.is_sports ? "/sports/login" : "/login";
             }
         };
         if (this.props.loggedInUsername == null) {
             return <div style={{
-                display: "flex", flexDirection: "row",
-                maxWidth: "800px", margin: "auto", marginTop: "1em", marginBottom: "1em",
-                padding: "1em"
-            }} className="shadow">
+                display: "flex", flexDirection: "row"
+            }} className="shadow container_div">
                 <a className="btn btn-light" style={{ marginLeft: "auto" }} href={window.location.origin + "/login"}>Login</a>
             </div>
         }
-        return <div style={{
+        return <div className='container_div' style={{
             display: "flex", flexDirection: "row",
-            maxWidth: "800px", margin: "auto", marginTop: "1em", marginBottom: "1em",
-            padding: "1em"
-        }} className="shadow">
-            {this.props.is_admin &&
-                [
-                    <a key="1" className={"btn btn-secondary "}
-                        style={{ backgroundColor: "#402E32", borderColor: "#402E32" }}
-                        href="/admin-dashboard">Admin dashboard</a>,
-                    <a key="2" className={"btn btn-secondary "}
-                        style={{ backgroundColor: "#402E32", borderColor: "#402E32" }}
-                        href="/clients-info">Clients info</a>,
-                    <a key="3" className={"btn btn-secondary "}
-                        style={{ backgroundColor: "#402E32", borderColor: "#402E32" }}
-                        href="/see-database">Check database</a>
-                ]
-
+        }}>
+            {
+                !this.props.is_sports && (this.props.is_admin || this.props.is_client_admin) ?
+                    <a className={"btn btn-secondary "}
+                        style={{ backgroundColor: "#434575", borderColor: "#434575" }}
+                        href="/datasets">My Datasets</a> :
+                    null
             }
-            {!this.props.is_admin &&
+            {!this.props.is_sports && this.props.is_admin &&
                 <a className={"btn btn-secondary "}
-                    style={{ backgroundColor: "#402E32", borderColor: "#402E32" }}
-                    href="/systems">My systems</a>
+                    style={{ backgroundColor: "#434575", borderColor: "#434575", marginLeft: '10px' }}
+                    href="/tickets">Tickets ({this.props.tickets_count})</a>
+            }
+            {
+                this.props.is_sports ?
+                    <a key={1} href='/sports-dashboard'
+                        style={{ borderColor: "#434575" }}
+                        className="btn btn-default">See Sports Dashboard</a>
+                    : null
+            }
+            {
+                this.props.is_sports && this.props.is_admin && window.location.href.includes('sports-dashboard') ?
+                    <button key={2} onClick={this.props.newPeopleSpreadsheet}
+                        style={{ borderColor: "#434575" }}
+                        className="btn btn-default">Upload New Information</button> :
+                    null
+            }
+            {
+                this.props.is_sports ?
+                    null :
+                    <a className={"btn btn-secondary "}
+                        style={{ backgroundColor: "#434575", borderColor: "#434575", marginLeft: '10px' }}
+                        href="/add-data">Add my company's data</a>
             }
             <div style={{ marginLeft: "auto" }} >
                 <a className={"btn btn-secondary " + (this.props.viewName === "profile" ? "active" : "")}
-                    href="/profile" style={{ marginRight: "0.5em", backgroundColor: "#402E32", borderColor: "#402E32" }}>
+                    href="/profile" style={{ marginRight: "0.5em", backgroundColor: "#434575", borderColor: "#434575" }}>
                     {this.props.loggedInUsername}
                 </a>
                 <a className="btn btn-hover" style={{ marginLeft: "auto", border: "solid 1px" }} onClick={logout}>Logout</a>

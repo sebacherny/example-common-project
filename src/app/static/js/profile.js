@@ -10,8 +10,6 @@ function App() {
   const TRANSLATED_STRINGS = {
     "name_label": { "en": "Name", },
     "address_label": { "en": "Address" },
-    "payment_type_label": { "en": "Payment type" },
-    "account_balance_label": { "en": "Account balance" }
 
   };
 
@@ -30,31 +28,22 @@ function App() {
     <div>
       <AppHeader />
       <UserHeader loggedInUsername={loggedInUsername} setLoggedInUsername={setLoggedInUsername} redirectWhenLoggedOut={true}
-        is_admin={userData && userData.is_admin} pageLanguage={pageLanguage} setPageLanguage={(lang) => { setLocalStorageLanguage(lang); setPageLanguage(lang); }}
+        is_admin={userData && userData.is_admin}
+        pageLanguage={pageLanguage} setPageLanguage={(lang) => { setLocalStorageLanguage(lang); setPageLanguage(lang); }}
+        tickets_count={userData != null ? userData.tickets_count : 0}
+        is_client_admin={userData != null ? userData.is_client_admin : false}
+        is_sports={userData && userData.is_sports}
       />
       {userData != null &&
-        <div style={{
-          maxWidth: "800px", margin: "auto", marginTop: "1em", marginBottom: "1em",
-          padding: "1em"
-        }} className="shadow">
+        <div className='container_div'>
           <div style={{ padding: "1em" }}>
             <label>{TRANSLATED_STRINGS['name_label'][pageLanguage]}:</label>{'  '}
             <label>{userData.name}</label>
             <br />
           </div>
           <div style={{ padding: "1em" }}>
-            <label>{TRANSLATED_STRINGS['address_label'][pageLanguage]}:</label>{'  '}
-            <label>{userData.address}</label>
-            <br />
-          </div>
-          <div style={{ padding: "1em" }}>
-            <label>{TRANSLATED_STRINGS['payment_type_label'][pageLanguage]}:</label>{'  '}
-            <label>{userData.payment_type}</label>
-            <br />
-          </div>
-          <div style={{ padding: "1em" }}>
-            <label>{TRANSLATED_STRINGS['account_balance_label'][pageLanguage]}:</label>{'  '}
-            <label>{userData.account_balance}</label>
+            <label>Email:</label>{'  '}
+            <label>{userData.email}</label>
             <br />
           </div>
         </div>
