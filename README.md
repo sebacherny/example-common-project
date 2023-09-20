@@ -12,9 +12,9 @@ After that, you can create a database. To create it from scratch:
 sudo su postgres
 postgres$ psql
 IF DATABASE EXISTS AND YOU WANT TO RESET IT:
-drop database christenson_and_recendes_db ;
+drop database db_name ;
 TO CREATE IT:
-create database christenson_and_recendes_db;
+create database db_name;
 
 ## MAC:
 After launching the App, click on the postgres file that will open a postgresql terminal, and just type:
