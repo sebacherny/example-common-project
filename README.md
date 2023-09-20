@@ -1,4 +1,4 @@
-# Christenson and Recendes project
+# Template project
 
 
 To run the project locally, you will need the SQL database set up. For that:
