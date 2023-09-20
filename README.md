@@ -18,7 +18,7 @@ create database db_name;
 
 ## MAC:
 After launching the App, click on the postgres file that will open a postgresql terminal, and just type:
-postgres=# create database christenson_and_recendes_db;
+postgres=# create database db_name;
 
 After database is created, run:
 python3 src/manage.py makemigrations
@@ -27,7 +27,7 @@ python3 src/manage.py createsuperuser
 
 Configure the environment variables from the terminal:
 export SECRET_KEY="AnyKeyForDjango"
-export DATABASE_URL=postgresql://localhost/christenson_and_recendes_db
+export DATABASE_URL=postgresql://localhost/db_name
 
 ## Explanation of the code
 
